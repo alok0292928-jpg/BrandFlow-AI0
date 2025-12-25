@@ -1,0 +1,7 @@
+{
+  "name": "BrandFlow AI",
+  "description": "Your Digital Business Partner: A multi-pillar AI platform for content branding, B2B management, personalized learning, and founder health.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
