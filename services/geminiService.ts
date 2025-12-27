@@ -25,7 +25,6 @@ export const generateBrandingContent = async (prompt: string, platform: string =
        * If user wants a Script: Create a production-ready video/reel script with scene descriptions and narrator lines.
        * If user wants Branding: Create a strategic business campaign including a hook and detailed copy.
     - VISUAL DIRECTION: You are a World-Class Art Director. Based on the topic, decide the PERFECT image style (e.g., 'A 3D isometric tech illustration', 'A cinematic moody portrait', 'A minimalist flat-vector logo style', 'A hyper-realistic nature photograph', 'A vibrant neon cyberpunk render'). Specify this in the 'visualPrompt'.
-    - VIDEO DIRECTION: Provide a concise 'videoPrompt' in English suitable for a high-quality cinematic video generator.
 
     USER REQUEST: "${prompt}"
     PLATFORM: ${platform}
@@ -36,8 +35,7 @@ export const generateBrandingContent = async (prompt: string, platform: string =
     - "title": A perfect headline/title.
     - "mainContent": The core text body.
     - "videoScript": The production/audio script.
-    - "visualPrompt": A high-detail English prompt describing the SPECIFIC ART STYLE you chose for the better visual impact.
-    - "videoPrompt": A cinematic English prompt for a 16:9 high-quality video generation.`,
+    - "visualPrompt": A high-detail English prompt describing the SPECIFIC ART STYLE you chose for the better visual impact.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -48,10 +46,9 @@ export const generateBrandingContent = async (prompt: string, platform: string =
           title: { type: Type.STRING },
           mainContent: { type: Type.STRING },
           videoScript: { type: Type.STRING },
-          visualPrompt: { type: Type.STRING },
-          videoPrompt: { type: Type.STRING }
+          visualPrompt: { type: Type.STRING }
         },
-        required: ["detectedLanguage", "mode", "title", "mainContent", "videoScript", "visualPrompt", "videoPrompt"]
+        required: ["detectedLanguage", "mode", "title", "mainContent", "videoScript", "visualPrompt"]
       }
     }
   });
@@ -80,40 +77,6 @@ export const generateMarketingImage = async (visualPrompt: string) => {
     }
   }
   return null;
-};
-
-/**
- * Generates an AI Video using the Veo model.
- */
-export const generateAIVideo = async (prompt: string, onStatus: (msg: string) => void) => {
-  // We recreate the client here to ensure it uses the latest selected API key if applicable
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-  onStatus("Initializing Video Engine...");
-  
-  let operation = await ai.models.generateVideos({
-    model: 'veo-3.1-fast-generate-preview',
-    prompt: prompt,
-    config: {
-      numberOfVideos: 1,
-      resolution: '720p',
-      aspectRatio: '16:9'
-    }
-  });
-
-  onStatus("Dreaming up the scenes... (May take 1-2 minutes)");
-  
-  while (!operation.done) {
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    operation = await ai.operations.getVideosOperation({ operation: operation });
-    onStatus("Crafting your cinematic masterpiece... 🍿");
-  }
-
-  const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-  if (!downloadLink) throw new Error("Video generation failed.");
-  
-  const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
 };
 
 /**
