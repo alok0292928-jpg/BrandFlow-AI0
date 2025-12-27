@@ -1,30 +1,21 @@
 
-import { GoogleGenAI, Type, GenerateContentResponse, Modality } from "@google/genai";
-
-const API_KEY = process.env.API_KEY || '';
-
-export const getGeminiClient = () => {
-  return new GoogleGenAI({ apiKey: API_KEY });
-};
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 /**
- * Generates a "Perfect Pack" with absolute precision.
- * Detects language, mirrors it, and selects the ideal marketing/storytelling mode.
+ * World-class branding content generation.
+ * Uses gemini-3-flash-preview for high-speed reasoning.
  */
 export const generateBrandingContent = async (prompt: string, platform: string = "All Platforms") => {
-  const ai = getGeminiClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `
     SYSTEM INSTRUCTIONS:
     - You are an Elite Digital Partner (BrandFlow AI).
-    - PERFECTION IS MANDATORY. The content must be high-impact, emotionally resonant, and professional.
-    - LANGUAGE MIRRORING: Detect the user's language (Hindi, English, Hinglish, Arabic, etc.). Use ONLY that language for the 'title', 'mainContent', and 'videoScript'.
-    - MODE SELECTION:
-       * If user wants a Story: Create a gripping narrative with a beginning, middle, and powerful end.
-       * If user wants a Script: Create a production-ready video/reel script with scene descriptions and narrator lines.
-       * If user wants Branding: Create a strategic business campaign including a hook and detailed copy.
-    - VISUAL DIRECTION: You are a World-Class Art Director. Based on the topic, decide the PERFECT image style (e.g., 'A 3D isometric tech illustration', 'A cinematic moody portrait', 'A minimalist flat-vector logo style', 'A hyper-realistic nature photograph', 'A vibrant neon cyberpunk render'). Specify this in the 'visualPrompt'.
+    - PERFECTION IS MANDATORY. The content must be high-impact and professional.
+    - LANGUAGE MIRRORING: Detect the user's language and use it for 'title', 'mainContent', and 'videoScript'.
+    - MODE SELECTION: Based on request, output Story, Script, or Branding.
+    - VISUAL DIRECTION: Specify a 'visualPrompt' in English for gemini-2.5-flash-image.
 
     USER REQUEST: "${prompt}"
     PLATFORM: ${platform}
@@ -35,7 +26,7 @@ export const generateBrandingContent = async (prompt: string, platform: string =
     - "title": A perfect headline/title.
     - "mainContent": The core text body.
     - "videoScript": The production/audio script.
-    - "visualPrompt": A high-detail English prompt describing the SPECIFIC ART STYLE you chose for the better visual impact.`,
+    - "visualPrompt": A high-detail English description.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -57,33 +48,29 @@ export const generateBrandingContent = async (prompt: string, platform: string =
 };
 
 /**
- * Generates a world-class marketing image using the AI-suggested style.
+ * High-fidelity marketing visual generation.
  */
 export const generateMarketingImage = async (visualPrompt: string) => {
-  const ai = getGeminiClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
-      parts: [{ text: `Commercial grade, high-fidelity marketing visual. Style and Subject: ${visualPrompt}. 4k, studio-lit, impeccable detail, trending on ArtStation.` }]
+      parts: [{ text: `Commercial grade visual: ${visualPrompt}. 4k, studio-lit.` }]
     },
     config: {
       imageConfig: { aspectRatio: "1:1" }
     }
   });
 
-  for (const part of response.candidates[0].content.parts) {
-    if (part.inlineData) {
-      return part.inlineData.data;
-    }
-  }
-  return null;
+  const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+  return part?.inlineData?.data || null;
 };
 
 /**
- * Synthesizes speech for the "Voice" component.
+ * High-quality Text-to-Speech synthesis.
  */
 export const generateSpeech = async (text: string, voiceName: string) => {
-  const ai = getGeminiClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: text }] }],
@@ -100,17 +87,31 @@ export const generateSpeech = async (text: string, voiceName: string) => {
   return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 };
 
-export const processVoiceToTask = async (transcription: string) => {
-  const ai = getGeminiClient();
+/**
+ * Real Voice-to-Task extraction. 
+ * Supports both text transcription and direct audio binary input.
+ */
+export const processVoiceToTask = async (input: string | { data: string, mimeType: string }) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const contents = typeof input === 'string' 
+    ? `Process this business request: "${input}"`
+    : {
+        parts: [
+          { inlineData: { data: input.data, mimeType: input.mimeType } },
+          { text: "Listen to this business request and extract task data." }
+        ]
+      };
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Convert business voice note to data: "${transcription}".`,
+    contents: contents,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          type: { type: Type.STRING },
+          type: { type: Type.STRING, description: "Task category e.g. Inventory, Sales, Logistics" },
           summary: { type: Type.STRING },
           data: { 
             type: Type.OBJECT,
@@ -120,7 +121,8 @@ export const processVoiceToTask = async (transcription: string) => {
               action: { type: Type.STRING }
             }
           }
-        }
+        },
+        required: ["type", "summary", "data"]
       }
     }
   });
@@ -128,10 +130,10 @@ export const processVoiceToTask = async (transcription: string) => {
 };
 
 export const generatePersonalizedCourse = async (goal: string) => {
-  const ai = getGeminiClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Micro-learning path for: ${goal}.`,
+    contents: `Detailed micro-learning modules for goal: ${goal}.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -149,7 +151,8 @@ export const generatePersonalizedCourse = async (goal: string) => {
               }
             }
           }
-        }
+        },
+        required: ["courseTitle", "modules"]
       }
     }
   });
@@ -157,10 +160,10 @@ export const generatePersonalizedCourse = async (goal: string) => {
 };
 
 export const analyzeHealthData = async (lifestyle: string) => {
-  const ai = getGeminiClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Bio-hacking analysis for founder: "${lifestyle}".`,
+    contents: `Biological analysis for lifestyle: "${lifestyle}".`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -169,7 +172,8 @@ export const analyzeHealthData = async (lifestyle: string) => {
           focusScore: { type: Type.NUMBER },
           analysis: { type: Type.STRING },
           recommendations: { type: Type.ARRAY, items: { type: Type.STRING } }
-        }
+        },
+        required: ["focusScore", "analysis", "recommendations"]
       }
     }
   });
